@@ -1,16 +1,26 @@
+import jwt from 'jsonwebtoken';
+
 export function protect(req, res, next) {
   const auth = req.headers.authorization || '';
-  const m = auth.match(/^Bearer (.+)$/);
-  if (!m) return res.status(401).json({ message: 'No token' });
+  const token = auth.split(' ')[1];
+  if (!token) return res.status(401).json({ message: 'No token' });
 
-  // demo decode: token is base64 of { name,email,type,iat,exp,sub }
   try {
-    const payload = JSON.parse(Buffer.from(m[1], 'base64').toString('utf8'));
-    if (Date.now() > payload.exp) return res.status(401).json({ message: 'Token expired' });
-    // map to your actor
-    req.actor = { email: payload.email, type: payload.type }; // 'user' | 'org'
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    req.actor = { email: payload.email, type: payload.type, id: payload.sub, username: payload.username };
     next();
-  } catch {
-    return res.status(401).json({ message: 'Invalid token' });
+  } catch (err) {
+    res.status(401).json({ message: 'Invalid or expired token' });
   }
+}
+
+export function issueToken(actor) {
+  const payload = {
+    sub: actor._id,
+    email: actor.email,
+    type: actor.type,
+    username: actor.username,
+  };
+  const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
+  return token;
 }

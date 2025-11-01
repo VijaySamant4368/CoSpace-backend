@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { protect } from '../middleware/auth.js';
-import { listFollowers, listFollowing, followOrg, unfollowOrg } from '../controllers/followController.js';
+import { listFollowers, listFollowing, followOrg, unfollowOrg, doIFollow, doesFollowMe } from '../controllers/followController.js';
 
-const r = Router();
-r.get('/org/:id/followers', listFollowers);
-r.get('/user/:id/following', listFollowing);
-r.post('/follow', protect, followOrg);
-r.post('/unfollow', protect, unfollowOrg);
-export default r;
+const router = Router();
+router.get('/org/:id/followers', listFollowers);
+router.get('/user/:id/following', listFollowing);
+router.get('/follow/doIFollow/:orgId', protect, doIFollow);
+router.get('/follow/doesFollowMe/:userId', protect, doesFollowMe);
+router.post('/follow', protect, followOrg);
+router.post('/unfollow', protect, unfollowOrg);
+export default router;

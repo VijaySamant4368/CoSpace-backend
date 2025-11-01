@@ -1,14 +1,15 @@
 import { Router } from 'express';
-import User from '../models/User.js';
+import { protect } from '../middleware/auth.js';
+import { listUsers, getUserById, getMe, deleteMe, updateMe, getFeedEvents } from '../controllers/userController.js';
 
-const r = Router();
-r.get('/', async (req, res) => {
-  const users = await User.find().select('-passwordHash').limit(100).lean();
-  res.json(users);
-});
-r.get('/:id', async (req, res) => {
-  const u = await User.findById(req.params.id).select('-passwordHash').lean();
-  if (!u) return res.status(404).json({ message: 'User not found' });
-  res.json(u);
-});
-export default r;
+const router = Router();
+
+router.get('/', listUsers);
+router.get('/feed', protect, getFeedEvents);
+
+router.get('/me/profile', protect, getMe);
+router.put('/me/profile', protect, updateMe);
+router.delete('/me', protect, deleteMe);
+
+router.get('/:id', getUserById);
+export default router;
