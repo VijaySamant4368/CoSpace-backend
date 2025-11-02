@@ -12,6 +12,7 @@ import conversationRoutes from './routes/chatRoute.js';
 import attendanceRoutes from './routes/attendanceRoute.js'
 import volunteerRoutes from './routes/volunteerRoute.js'
 import donationRoutes from './routes/DonationRoute.js'
+import chatRoutes from './routes/chatRoute.js'
 
 dotenv.config();
 
@@ -44,3 +45,4 @@ app.use('/api/conversations', conversationRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/volunteer', volunteerRoutes);
 app.use('/api/donation', donationRoutes);
+app.use('/api/chats', chatRoutes);

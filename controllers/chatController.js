@@ -107,3 +107,38 @@ export const addMessage = asyncHandler(async (req, res) => {
 
   res.status(201).json({ ok: true });
 });
+
+export const createOrGetChat = asyncHandler(async (req, res) => {
+  const { recipientKind, recipientId } = req.body; // 'Organization' | 'User', ObjectId string
+  if (!recipientKind || !recipientId) {
+    return res.status(400).json({ message: 'recipientKind and recipientId required' });
+  }
+
+  const meKind = actorToParticipant(req.actor);
+  const meId = await getActorDocId(meKind, req.actor);
+  if (!meId) return res.status(401).json({ message: 'Actor not found' });
+
+  // find existing 1:1 chat with exactly these two participants
+  const chat = await Chat.findOne({
+    participants: {
+      $all: [
+        { $elemMatch: { kind: meKind, ref: meId } },
+        { $elemMatch: { kind: recipientKind, ref: recipientId } },
+      ],
+    },
+  }).select('_id').lean();
+
+  if (chat) return res.json({ chatId: chat._id });
+
+  // create new
+  const doc = await Chat.create({
+    participants: [
+      { kind: meKind, ref: meId },
+      { kind: recipientKind, ref: recipientId },
+    ],
+    messages: [],
+    lastActivityAt: new Date(),
+  });
+
+  res.status(201).json({ chatId: doc._id });
+});
