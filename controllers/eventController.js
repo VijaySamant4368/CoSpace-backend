@@ -4,6 +4,7 @@ import Attendance from "../models/Attendance.js";
 import { isValidDate, isValidObjectId, isValidTime } from "../utils/validate.js";
 import { uploadImage, updateImage, deleteImage } from "../utils/image.js";
 import { isDateTimeInPast } from "../utils/time.js";
+import Volunteer from "../models/Volunteer.js";
 
 export const listEvents = asyncHandler(async (req, res) => {
   const { q } = req.query;
@@ -127,4 +128,19 @@ export const deleteEvent = asyncHandler(async (req, res) => {
   await event.deleteOne();
 
   res.json({ message: "Event deleted successfully", deleted: true });
+});
+
+export const getEventStats = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ message: 'Invalid event id' });
+  }
+
+  // Adjust filters if you have status fields you want to include/exclude
+  const [participants, volunteers] = await Promise.all([
+    Attendance.countDocuments({ event: id /*, status: 'joined' */ }),
+    Volunteer.countDocuments({ event: id /*, status: { $in: ['pending','confirmed'] } */ }),
+  ]);
+
+  res.json({ participants, volunteers });
 });
