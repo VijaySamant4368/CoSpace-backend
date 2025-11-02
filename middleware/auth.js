@@ -1,13 +1,28 @@
 import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
+import Organization from '../models/Organization.js';
 
-export function protect(req, res, next) {
+export async function protect(req, res, next) {
   const auth = req.headers.authorization || '';
   const token = auth.split(' ')[1];
   if (!token) return res.status(401).json({ message: 'No token' });
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    req.actor = { email: payload.email, type: payload.type, id: payload.sub, username: payload.username };
+    const { sub: id, type } = payload;
+
+    let actor = null;
+    if (type === 'user') {
+      actor = await User.findById(id).select('-passwordHash').lean();
+    } else if (type === 'org') {
+      actor = await Organization.findById(id).select('-passwordHash').lean();
+    }
+
+    if (!actor) {
+      return res.status(401).json({ message: 'Account deleted or invalid' });
+    }
+
+    req.actor = { id, email: actor.email, type, username: actor.username };
     next();
   } catch (err) {
     res.status(401).json({ message: 'Invalid or expired token' });

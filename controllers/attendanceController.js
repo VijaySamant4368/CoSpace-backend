@@ -1,21 +1,21 @@
 import asyncHandler from '../middleware/asyncHandler.js';
 import Attendance from '../models/Attendance.js';
 import Event from '../models/Event.js';
+import { isDateTimeInPast } from '../utils/time.js';
 import { isValidObjectId } from '../utils/validate.js';
 
-// POST /api/attendance/attend  { eventId }
+// POST /api/attendance/attend/:eventId
 export const attend = asyncHandler(async (req, res) => {
   const { actor } = req;
-  const { eventId } = req.body || {};
+  const eventId = req.params.eventId;
 
   if (actor?.type !== 'user') return res.status(403).json({ message: 'Only users can attend events' });
-  if (!isValidObjectId(eventId)) return res.status(400).json({ message: 'Invalid eventId' });
+  if (!isValidObjectId(eventId)) return res.status(400).json({ message: 'Invalid eventId', eventId });
 
-  // fetch as a real document (no .lean), and include totalAttending
-  const event = await Event.findById(eventId).select('date totalAttending');
+  const event = await Event.findById(eventId).select('date time totalAttending');
   if (!event) return res.status(404).json({ message: 'Event not found' });
 
-  if (event.date.getTime() < Date.now()) {
+  if (isDateTimeInPast(event.date, event.time)) {
     return res.status(400).json({ message: 'Cannot attend; event date has already passed' });
   }
 
@@ -35,7 +35,7 @@ export const attend = asyncHandler(async (req, res) => {
 // POST /api/attendance/unattend  { eventId }
 export const unattend = asyncHandler(async (req, res) => {
   const { actor } = req;
-  const { eventId } = req.body || {};
+  const eventId = req.params.eventId;
 
   if (actor?.type !== 'user') return res.status(403).json({ message: 'Only users can unattend events' });
   if (!isValidObjectId(eventId)) return res.status(400).json({ message: 'Invalid eventId' });

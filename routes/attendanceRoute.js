@@ -10,8 +10,8 @@ import {
 
 const router = Router();
 
-router.post('/attend', protect, attend);
-router.post('/unattend', protect, unattend);
+router.post('/attend/:eventId', protect, attend);
+router.post('/unattend/:eventId', protect, unattend);
 router.get('/isMeAttending/:eventId', protect, isMeAttending);
 router.get('/:eventId/details', protect, getAttendeeDetails);
 router.get('/user/:userId', protect, getAttendingDetails);

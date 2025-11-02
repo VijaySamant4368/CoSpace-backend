@@ -16,6 +16,7 @@ const eventSchema = new mongoose.Schema(
     collaboratingOrgId:{ type: mongoose.Schema.Types.ObjectId, ref: 'Organization', default: null },
 
     totalAttending: { type: Number, default: 0 },
+    totalVolunteering: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

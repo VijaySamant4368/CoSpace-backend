@@ -4,6 +4,7 @@ const volunteerSchema = new mongoose.Schema(
   {
     user:  { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     event: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true, index: true },
+    status: {type: String, enum: ['pending','approved','rejected'], default: 'pending' }
     // role:  { type: String }
   },
   { timestamps: true }

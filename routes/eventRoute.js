@@ -1,10 +1,10 @@
 import express from "express";
-import multer from "multer";
+
 import {createEvent,updateEvent,deleteEvent,listEvents,getEventById,getEventsByOrg} from "../controllers/eventController.js";
 import { protect } from '../middleware/auth.js';
+import { upload } from "../utils/upload.js";
 
 const router = express.Router();
-const upload = multer({ dest: "temp/" }); // saves to /temp first
 
 router.get("/", listEvents);
 router.get("/:id", getEventById);

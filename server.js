@@ -10,6 +10,8 @@ import eventRoutes from './routes/eventRoute.js';
 import followRoutes from './routes/followRoute.js';
 import conversationRoutes from './routes/chatRoute.js';
 import attendanceRoutes from './routes/attendanceRoute.js'
+import volunteerRoutes from './routes/volunteerRoute.js'
+import donationRoutes from './routes/DonationRoute.js'
 
 dotenv.config();
 
@@ -40,3 +42,5 @@ app.use('/api/events', eventRoutes);
 app.use('/api', followRoutes); // gives /api/org/:id/followers etc
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/volunteer', volunteerRoutes);
+app.use('/api/donation', donationRoutes);

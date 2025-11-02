@@ -1,8 +1,9 @@
 import asyncHandler from "../middleware/asyncHandler.js";
 import Event from "../models/Event.js";
 import Attendance from "../models/Attendance.js";
-import { isValidDate, isValidObjectId } from "../utils/validate.js";
+import { isValidDate, isValidObjectId, isValidTime } from "../utils/validate.js";
 import { uploadImage, updateImage, deleteImage } from "../utils/image.js";
+import { isDateTimeInPast } from "../utils/time.js";
 
 export const listEvents = asyncHandler(async (req, res) => {
   const { q } = req.query;
@@ -31,6 +32,10 @@ export const createEvent = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "Missing required fields (name, date, time)" });
   if (!isValidDate(date))
     return res.status(400).json({ message: "Invalid date format. Use YYYY-MM-DD." });
+  if (!isValidTime(time))
+      return res.status(400).json({ message: "Invalid time format. Use HH:mm (24-hour)." });
+  if (isDateTimeInPast(date, time))
+    return res.status(400).json({ message: "Cannot create an event in past" });
 
   const skillsArray = Array.isArray(skills)
     ? skills
@@ -112,6 +117,10 @@ export const deleteEvent = asyncHandler(async (req, res) => {
   if (!event) return res.status(404).json({ message: "Event not found" });
   if (actor?.type !== "org" || actor.id !== String(event.conductingOrgId))
     return res.status(403).json({ message: "Not authorized to delete this event" });
+
+  // Check if the current date and time is before the event's date and time
+  if (isDateTimeInPast(event.date, event.time))
+    return res.status(400).json({ message: "Cannot delete an event that already occured" });
 
   await Attendance.deleteMany({ event: id });
   if (event.image) await deleteImage(event.image);
