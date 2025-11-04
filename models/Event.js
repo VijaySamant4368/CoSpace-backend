@@ -21,4 +21,7 @@ const eventSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+eventSchema.index({ conductingOrgId: 1, date: 1 });
+eventSchema.index({ collaboratingOrgId: 1 });
+
 export default mongoose.model('Event', eventSchema);

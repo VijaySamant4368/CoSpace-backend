@@ -5,6 +5,7 @@ import { isValidDate, isValidObjectId, isValidTime } from "../utils/validate.js"
 import { uploadImage, updateImage, deleteImage } from "../utils/image.js";
 import { isDateTimeInPast } from "../utils/time.js";
 import Volunteer from "../models/Volunteer.js";
+import Collaboration from '../models/Collaboration.js';
 
 export const listEvents = asyncHandler(async (req, res) => {
   const { q } = req.query;
@@ -123,6 +124,7 @@ export const deleteEvent = asyncHandler(async (req, res) => {
   if (isDateTimeInPast(event.date, event.time))
     return res.status(400).json({ message: "Cannot delete an event that already occured" });
 
+  await Collaboration.deleteMany({ eventId: id });
   await Attendance.deleteMany({ event: id });
   if (event.image) await deleteImage(event.image);
   await event.deleteOne();
