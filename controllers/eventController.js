@@ -64,7 +64,10 @@ export const createEvent = asyncHandler(async (req, res) => {
 export const updateEvent = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { actor } = req;
-  const updates = req.body;
+  const allowedFields = ['name', 'description', 'date', 'time', 'venue', 'isVirtual', 'image', 'skills']; // whitelist
+  const updates = Object.fromEntries(
+    Object.entries(req.body).filter(([key]) => allowedFields.includes(key))
+  );
 
   if (!isValidObjectId(id))
     return res.status(400).json({ message: "Invalid event ID" });

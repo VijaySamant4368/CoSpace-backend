@@ -15,6 +15,7 @@ import donationRoutes from './routes/donationRoute.js'
 import chatRoutes from './routes/chatRoute.js'
 import collaborationRoutes from './routes/collaborationRoute.js'
 import searchRoutes from './routes/searchRoute.js';
+import reviewRoutes from './routes/reviewRoute.js';
 
 dotenv.config();
 
@@ -51,3 +52,4 @@ app.use('/api/chats', chatRoutes);
 app.use('/api/collab', collaborationRoutes);
 
 app.use('/api/search', searchRoutes);
+app.use('/api/reviews', reviewRoutes);

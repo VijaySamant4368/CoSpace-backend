@@ -30,8 +30,9 @@ export async function protect(req, res, next) {
 }
 
 export function issueToken(actor) {
+  const _id = actor._id || actor.id; // <-- accept both
   const payload = {
-    sub: actor._id,
+    sub: _id,
     email: actor.email,
     type: actor.type,
     username: actor.username,
