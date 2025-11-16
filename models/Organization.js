@@ -13,6 +13,7 @@ const organizationSchema = new mongoose.Schema(
     website:   { type: String },
     regId:     { type: String },
     affiliation:{ type: String },
+    upi: { type: String },
     followersCount: { type: Number, default: 0 },
   },
   { timestamps: true }

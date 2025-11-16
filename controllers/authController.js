@@ -40,7 +40,7 @@ export const login = asyncHandler(async (req, res) => {
 
 const USERNAME_RE = /^[a-z0-9._-]{3,32}$/;
 export const signup = asyncHandler(async (req, res) => {
-  let { type, name, email, password, username, headName, interests, regId, dob, bio, mission, website, affiliation, orgType } = req.body || {};
+  let { type, name, email, password, username, headName, interests, regId, dob, bio, mission, website, affiliation, orgType, upi } = req.body || {};
   if (!type || !['user','org'].includes(type))
     return res.status(400).json({ message: 'type must be "user" or "org"' });
   if (!name || !email || !password || !username)
@@ -87,7 +87,7 @@ export const signup = asyncHandler(async (req, res) => {
         user: { id: doc._id, type, name: doc.name, email: doc.email, username: doc.username, profilePicture: doc.profilePicture },
       });
     } else {
-      const doc = await Organization.create({ name, email, headName, username, passwordHash, profilePicture, regId, mission, website, affiliation, orgType });
+      const doc = await Organization.create({ name, email, headName, username, passwordHash, profilePicture, regId, mission, website, affiliation, orgType, upi });
         const token = issueToken({ id: doc._id, email: doc.email, type, username: doc.username });
       return res.status(201).json({
         token,
@@ -115,7 +115,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
   }
   const storedHash = oldDoc.passwordHash;
 
-  const { name, username, bio, interests, headName, website, regId, affiliation, type, mission, currentPassword, newPassword} = req.body || {};
+  const { name, username, bio, interests, headName, website, regId, affiliation, type, mission, currentPassword, newPassword, upi} = req.body || {};
   let updateData = {};
 
   if (newPassword){
@@ -154,6 +154,9 @@ export const updateProfile = asyncHandler(async (req, res) => {
     if (website) updateData.website = website;
     if (regId) updateData.regId = regId;
     if (affiliation) updateData.affiliation = affiliation;
+    if (upi) updateData.upi = upi;
+    if (type) updateData.type = type;
+    if (mission) updateData.mission= mission;
     updatedDoc = await Organization.findByIdAndUpdate(actor.id, updateData, { new: true }).select('-passwordHash');
   } else {
     return res.status(400).json({ message: 'Unknown account type' });

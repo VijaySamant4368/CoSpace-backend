@@ -16,6 +16,7 @@ import chatRoutes from './routes/chatRoute.js'
 import collaborationRoutes from './routes/collaborationRoute.js'
 import searchRoutes from './routes/searchRoute.js';
 import reviewRoutes from './routes/reviewRoute.js';
+import paymentRoutes from './routes/paymentRoute.js';
 
 dotenv.config();
 
@@ -43,8 +44,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/orgs', orgRoutes);
 app.use('/api/events', eventRoutes);
-app.use('/api', followRoutes); // gives /api/org/:id/followers etc
-// app.use('/api/conversations', conversationRoutes);
+app.use('/api', followRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/volunteer', volunteerRoutes);
 app.use('/api/donation', donationRoutes);
@@ -53,3 +53,5 @@ app.use('/api/collab', collaborationRoutes);
 
 app.use('/api/search', searchRoutes);
 app.use('/api/reviews', reviewRoutes);
+
+app.use("/api/payment", paymentRoutes);

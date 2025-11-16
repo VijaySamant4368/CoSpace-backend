@@ -94,7 +94,6 @@ export const eventPastDonation = async (req, res) => {
   }
 };
 
-
 /** GET /api/donations/org/:orgId — all donations to one org (ALL rows) */
 export const orgPastDonation = async (req, res) => {
   try {
