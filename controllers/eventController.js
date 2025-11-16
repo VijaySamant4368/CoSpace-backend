@@ -141,11 +141,11 @@ export const getEventStats = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Invalid event id' });
   }
 
-  // Adjust filters if you have status fields you want to include/exclude
-  const [participants, volunteers] = await Promise.all([
-    Attendance.countDocuments({ event: id /*, status: 'joined' */ }),
-    Volunteer.countDocuments({ event: id /*, status: { $in: ['pending','confirmed'] } */ }),
+  const [participants, volunteers, pending] = await Promise.all([
+    Attendance.countDocuments({ event: id}),
+    Volunteer.countDocuments({ event: id, status: 'approved' }),
+    Volunteer.countDocuments({ event: id, status: 'pending' }),
   ]);
 
-  res.json({ participants, volunteers });
+  res.json({ participants, volunteers, pending });
 });

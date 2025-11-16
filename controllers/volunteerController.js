@@ -171,6 +171,11 @@ export const isMeVolunteering = asyncHandler(async (req, res) => {
   if (actor?.type !== 'user') return res.status(403).json({ message: 'Only users can query this' });
   if (!isValidObjectId(eventId)) return res.status(400).json({ message: 'Invalid eventId' });
 
-  const exists = await Volunteer.exists({ user: actor.id, event: eventId });
-  res.json({ volunteering: !!exists });
+  const exists = await Volunteer.findOne({ user: actor.id, event: eventId });
+  if (exists) {
+    res.json({ volunteering: true, status: exists.status});
+  }
+  else {
+    res.json({ volunteering: false});
+  }
 });
