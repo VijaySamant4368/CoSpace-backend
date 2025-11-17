@@ -39,11 +39,8 @@ export const createPayment = async (req, res) => {
       .lean();
     if (!ev) return res.status(404).json({ error: "Event not found" });
 
-    // Razorpay expects amount in paise
-    const amountInPaise = Math.round(amt * 100);
-
     const options = {
-      amount: amountInPaise,
+      amount: amt,
       currency,
       payment_capture: 1,
       notes: {
