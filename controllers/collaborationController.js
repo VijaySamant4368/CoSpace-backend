@@ -57,7 +57,7 @@ export const createCollabRequest = asyncHandler(async (req, res) => {
 
       type: "COLLAB_REQUEST",
       title: "New collaboration request",
-      body: `${actor.username} requested collaboration for your event.`,
+      body: `${actor.username} requested collaboration for your event "${evt.name}".`,
       entityType: "Event",
       entityId: eventId,
       data: { requestId: doc._id }
@@ -179,7 +179,7 @@ export const acceptRequest = asyncHandler(async (req, res) => {
 
         type: "COLLAB_ACCEPTED", // add in enum if you want distinct type
         title: "Collaboration accepted",
-        body: `Your collaboration request was accepted.`,
+        body: `Your collaboration request for "${updatedEvt.name}" was accepted.`,
         entityType: "Event",
         entityId: eventId,
         data: { requestId }
@@ -205,7 +205,7 @@ export const rejectRequest = asyncHandler(async (req, res) => {
   if (!isValidObjectId(eventId) || !isValidObjectId(requestId))
     return res.status(400).json({ message: 'Invalid ids' });
 
-  const evt = await Event.findById(eventId).select('conductingOrgId').lean();
+  const evt = await Event.findById(eventId).select('conductingOrgId name').lean();
   if (!evt) return res.status(404).json({ message: 'Event not found' });
   if (String(evt.conductingOrgId) !== actor.id)
     return res.status(403).json({ message: 'Only conducting org can reject' });
@@ -219,6 +219,7 @@ export const rejectRequest = asyncHandler(async (req, res) => {
   if (!reqDoc) return res.status(404).json({ message: 'Request not found or not pending' });
 
   // ✅ NOTIFICATION: notify requester org rejected
+  console.log(evt)
   await notify({
     recipient: reqDoc.requesterOrgId,
     recipientType: "Organization",
@@ -228,7 +229,7 @@ export const rejectRequest = asyncHandler(async (req, res) => {
 
     type: "COLLAB_REJECTED", // add in enum if you want distinct type
     title: "Collaboration rejected",
-    body: `Your collaboration request was rejected.`,
+    body: `Your collaboration request for "${evt.name}" was rejected.`,
     entityType: "Event",
     entityId: eventId,
     data: { requestId }
@@ -255,7 +256,7 @@ export const cancelMyRequest = asyncHandler(async (req, res) => {
   if (!reqDoc) return res.status(404).json({ message: 'No pending request found to cancel' });
 
   // ✅ NOTIFICATION: notify conducting org cancelled
-  const evt = await Event.findById(eventId).select('conductingOrgId').lean();
+  const evt = await Event.findById(eventId).select('conductingOrgId name').lean();
   if (evt?.conductingOrgId) {
     await notify({
       recipient: evt.conductingOrgId,
@@ -266,7 +267,7 @@ export const cancelMyRequest = asyncHandler(async (req, res) => {
 
       type: "COLLAB_CANCELLED", // add in enum if you want distinct type
       title: "Collaboration request cancelled",
-      body: `${actor.username} cancelled their collaboration request.`,
+      body: `${actor.username} cancelled their collaboration request for "${evt.name}."`,
       entityType: "Event",
       entityId: eventId,
       data: { requestId }

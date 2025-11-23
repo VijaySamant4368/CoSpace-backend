@@ -32,20 +32,20 @@ const notificationSchema = new mongoose.Schema(
       type: String,
       required: true,
       enum: [
-        "FOLLOW_ORG",
+        "FOLLOW_ORG",         //For org   
         "EVENT_CREATED",
         "EVENT_REMINDER",
         "CHAT_MESSAGE",
-        "COLLAB_REQUEST",
-        "DONATION_RECEIVED",
-        "COLLAB_ACCEPTED",
-        "COLLAB_REJECTED",
-        "COLLAB_CANCELLED",
-        "ATTEND_EVENT",
+        "COLLAB_REQUEST",     //For org   
+        "DONATION_RECEIVED",  //For org   
+        "COLLAB_ACCEPTED",    //For org   
+        "COLLAB_REJECTED",    //For org   
+        "COLLAB_CANCELLED",   //For org   
+        "ATTEND_EVENT",       //For org   
         "EVENT_REVIEW",
-        "VOLUNTEER_APPLIED",
-        "VOLUNTEER_APPROVED",
-        "VOLUNTEER_REJECTED",
+        "VOLUNTEER_APPLIED",  //For org   
+        "VOLUNTEER_APPROVED", //For user  
+        "VOLUNTEER_REJECTED", //For yser  
       ],
       index: true,
     },
