@@ -45,8 +45,6 @@ export const donate = async (req, res) => {
       timestamp: timestamp ? new Date(timestamp) : Date.now(),
     });
 
-    console.log("out")
-    console.log(ev)
     if (ev.conductingOrgId) {
       const donor = await User.findById(donorId).select('username name').lean();
 

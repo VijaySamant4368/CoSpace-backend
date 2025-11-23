@@ -248,7 +248,7 @@ export const isMeVolunteering = asyncHandler(async (req, res) => {
   if (!isValidObjectId(eventId)) return res.status(400).json({ message: 'Invalid eventId' });
 
   const exists = await Volunteer.findOne({ user: actor.id, event: eventId });
-  if (exists) {
+  if (exists && exists.status !="rejected" ) {
     res.json({ volunteering: true, status: exists.status});
   }
   else {

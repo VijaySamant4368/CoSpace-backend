@@ -218,8 +218,7 @@ export const rejectRequest = asyncHandler(async (req, res) => {
 
   if (!reqDoc) return res.status(404).json({ message: 'Request not found or not pending' });
 
-  // ✅ NOTIFICATION: notify requester org rejected
-  console.log(evt)
+  // NOTIFICATION: notify requester org rejected
   await notify({
     recipient: reqDoc.requesterOrgId,
     recipientType: "Organization",

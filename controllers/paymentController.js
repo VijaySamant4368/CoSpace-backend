@@ -21,7 +21,6 @@ const razorpay = new Razorpay({
  * 3. Returns order info for frontend Razorpay Checkout
  */
 export const createPayment = async (req, res) => {
-  console.log(req.body)
   try {
     const donorId = req.actor?.id;
     if (!donorId) return res.status(401).json({ error: "Unauthorized" });

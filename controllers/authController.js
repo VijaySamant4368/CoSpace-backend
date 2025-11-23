@@ -28,7 +28,6 @@ export const login = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email }).lean();
   const org  = user ? null : await Organization.findOne({ email }).lean();
   const actor = user ? { ...user, type: 'user' } : org ? { ...org, type: 'org' } : null;
-  console.log(actor)
   if (!actor?.passwordHash) return res.status(404).json({ message: 'Account not found' });
 
   const ok = await verifyPassword(password, actor.passwordHash);

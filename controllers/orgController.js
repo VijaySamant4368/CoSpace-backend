@@ -36,7 +36,6 @@ export const getOrgEvents = asyncHandler(async (req, res) => {
   };
 
   const events = await Event.find(q).lean();
-  console.log(events)
   res.json(events);
 });
 
