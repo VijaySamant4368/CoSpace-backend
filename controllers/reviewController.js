@@ -4,6 +4,9 @@ import Event from '../models/Event.js';
 import Attendance from '../models/Attendance.js';
 import Volunteer from '../models/Volunteer.js';
 import Donation from '../models/Donation.js';
+import { notify } from '../utils/notify.js';
+import User from '../models/User.js';
+import Organization from '../models/Organization.js';
 
 /* ---------- Helpers ---------- */
 function buildEventDateTime(event) {
@@ -61,6 +64,36 @@ export async function addReview(req, res) {
       ...roles,
     });
 
+    // ----------------------------------------------------
+    // 🔔 NOTIFICATION: Notify the conducting organization
+    // ----------------------------------------------------
+    if (event.conductingOrgId) {
+      const user = await User.findById(userId).select('username name').lean();
+
+      await notify({
+        recipient: event.conductingOrgId,
+        recipientType: "Organization",
+
+        actorId: userId,
+        actorType: "User",
+
+        type: "EVENT_REVIEW",
+        title: "New Event Review",
+        body: `${user?.username || "A user"} left a review for your event "${event.name}".`,
+
+        entityType: "Review",
+        entityId: review._id,
+
+        data: {
+          rating,
+          comment,
+          eventId,
+          reviewerId: userId
+        }
+      });
+    }
+    // ----------------------------------------------------
+
     res.status(201).json(review);
   } catch (err) {
     if (err.code === 11000)
@@ -115,7 +148,6 @@ export async function getEventReviewsByRole(req, res) {
     if (!hasEventPassed(event))
       return res.status(403).json({ message: 'Reviews are only available after the event has passed.' });
 
-    // optional auth → figure out viewer eligibility
     let viewerEligible = false;
     const auth = req.headers.authorization || '';
     const token = auth.split(' ')[1];
@@ -126,9 +158,7 @@ export async function getEventReviewsByRole(req, res) {
           const roles = await getRoleFlags(payload.sub, eventId);
           viewerEligible = roles.isVolunteer || roles.isParticipant || roles.isDonor;
         }
-      } catch {
-        // ignore invalid/expired token
-      }
+      } catch {}
     }
 
     const allReviews = await Review.find({ event: eventId })

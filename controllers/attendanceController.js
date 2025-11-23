@@ -1,6 +1,7 @@
 import asyncHandler from '../middleware/asyncHandler.js';
 import Attendance from '../models/Attendance.js';
 import Event from '../models/Event.js';
+import { notify } from '../utils/notify.js';
 import { isDateTimeInPast } from '../utils/time.js';
 import { isValidObjectId } from '../utils/validate.js';
 
@@ -12,7 +13,8 @@ export const attend = asyncHandler(async (req, res) => {
   if (actor?.type !== 'user') return res.status(403).json({ message: 'Only users can attend events' });
   if (!isValidObjectId(eventId)) return res.status(400).json({ message: 'Invalid eventId', eventId });
 
-  const event = await Event.findById(eventId).select('date time totalAttending');
+  const event = await Event.findById(eventId)
+    .select('date time totalAttending conductingOrgId collaboratingOrgId name');
   if (!event) return res.status(404).json({ message: 'Event not found' });
 
   if (isDateTimeInPast(event.date, event.time)) {
@@ -29,8 +31,44 @@ export const attend = asyncHandler(async (req, res) => {
   event.totalAttending = (event.totalAttending || 0) + 1;
   await event.save();
 
+  if (event.conductingOrgId) {
+    await notify({
+      recipient: event.conductingOrgId,
+      recipientType: "Organization",
+
+      actorId: actor.id,
+      actorType: "User",
+
+      type: "ATTEND_EVENT",
+      title: "New attendee",
+      body: `${actor.username} is attending your event "${event.name}"`,
+
+      entityType: "Event",
+      entityId: eventId,
+
+      data: { attendeeId: actor.id }
+    });
+  }
+  if (event.collaboratingOrgId) {
+    await notify({
+      recipient: event.collaboratingOrgId,
+      recipientType: "Organization",
+
+      actorId: actor.id,
+      actorType: "User",
+
+      type: "ATTEND_EVENT",
+      title: "New attendee",
+      body: `${actor.username} is attending the event you collaborated on: "${event.name}"`,
+
+      entityType: "Event",
+      entityId: eventId
+    });
+  }
+
   return res.status(201).json({ attending: true, attendance: doc });
 });
+
 
 // POST /api/attendance/unattend  { eventId }
 export const unattend = asyncHandler(async (req, res) => {

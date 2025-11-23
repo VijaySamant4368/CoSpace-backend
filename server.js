@@ -8,7 +8,6 @@ import userRoutes from './routes/userRoute.js';
 import orgRoutes from './routes/orgRoute.js';
 import eventRoutes from './routes/eventRoute.js';
 import followRoutes from './routes/followRoute.js';
-// import conversationRoutes from './routes/chatRoute.js';
 import attendanceRoutes from './routes/attendanceRoute.js'
 import volunteerRoutes from './routes/volunteerRoute.js'
 import donationRoutes from './routes/donationRoute.js'
@@ -17,6 +16,7 @@ import collaborationRoutes from './routes/collaborationRoute.js'
 import searchRoutes from './routes/searchRoute.js';
 import reviewRoutes from './routes/reviewRoute.js';
 import paymentRoutes from './routes/paymentRoute.js';
+import notificationRoutes from './routes/notificationRoute.js';
 
 dotenv.config();
 
@@ -55,3 +55,4 @@ app.use('/api/search', searchRoutes);
 app.use('/api/reviews', reviewRoutes);
 
 app.use("/api/payment", paymentRoutes);
+app.use("/api/notifications", notificationRoutes);

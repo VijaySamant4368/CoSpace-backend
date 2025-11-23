@@ -3,6 +3,8 @@ import { isValidObjectId } from '../utils/validate.js';
 import Event from '../models/Event.js';
 import Volunteer from '../models/Volunteer.js';
 import { isDateTimeInPast } from '../utils/time.js';
+import { notify } from '../utils/notify.js';
+import User from '../models/User.js';
 
 // POST /api/volunteer/volunteer/:eventId
 export const volunteer = asyncHandler(async (req, res) => {
@@ -11,7 +13,7 @@ export const volunteer = asyncHandler(async (req, res) => {
   if (actor?.type !== 'user') return res.status(403).json({ message: 'Only users can volunteer' });
   if (!isValidObjectId(eventId)) return res.status(400).json({ message: 'Invalid eventId' });
 
-  const event = await Event.findById(eventId).select('date conductingOrgId collaboratingOrgId time').lean();
+  const event = await Event.findById(eventId).select('date conductingOrgId collaboratingOrgId time name').lean();
   if (!event) return res.status(404).json({ message: 'Event not found' });
   if (isDateTimeInPast(event.date, event.time)) return res.status(400).json({ message: 'Event already passed' });
 
@@ -21,6 +23,43 @@ export const volunteer = asyncHandler(async (req, res) => {
     { $set: { status: 'pending' } },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
+
+  // 🔔 NOTIFICATION: notify conducting org about volunteer request
+  if (event.conductingOrgId) {
+    await notify({
+      recipient: event.conductingOrgId,
+      recipientType: "Organization",
+
+      actorId: actor.id,
+      actorType: "User",
+
+      type: "VOLUNTEER_APPLIED",
+      title: "New volunteer request",
+      body: `${actor.username} applied to volunteer for "${event.name}".`,
+
+      entityType: "Event",
+      entityId: eventId,
+      data: { volunteerId: actor.id }
+    });
+  }
+
+  // 🔔 NOTIFICATION: notify collaborating org too (if any)
+  if (event.collaboratingOrgId) {
+    await notify({
+      recipient: event.collaboratingOrgId,
+      recipientType: "Organization",
+
+      actorId: actor.id,
+      actorType: "User",
+
+      type: "VOLUNTEER_APPLIED",
+      title: "New volunteer request",
+      body: `${actor.username} applied to volunteer for "${event.name}".`,
+
+      entityType: "Event",
+      entityId: eventId,
+    });
+  }
 
   res.status(201).json({ ok: true, volunteer: doc });
 });
@@ -118,7 +157,7 @@ export const approveVolunteer = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Invalid ids' });
   }
 
-  const event = await Event.findById(eventId).select('conductingOrgId collaboratingOrgId date time').lean();
+  const event = await Event.findById(eventId).select('conductingOrgId collaboratingOrgId date time name').lean();
   if (!event) return res.status(404).json({ message: 'Event not found' });
 
   const isOwner =
@@ -133,6 +172,25 @@ export const approveVolunteer = asyncHandler(async (req, res) => {
     { new: true }
   );
   if (!v) return res.status(404).json({ message: 'Volunteer record not found' });
+
+  // 🔔 NOTIFICATION: notify user approved
+  const user = await User.findById(userId).select('username name').lean();
+  await notify({
+    recipient: userId,
+    recipientType: "User",
+
+    actorId: actor.id,
+    actorType: "Organization",
+
+    type: "VOLUNTEER_APPROVED",
+    title: "Volunteer request approved",
+    body: `Your volunteer request for "${event.name}" was approved.`,
+
+    entityType: "Event",
+    entityId: eventId,
+    data: { status: "approved" }
+  });
+
   res.json({ ok: true, volunteer: v });
 });
 
@@ -146,7 +204,7 @@ export const rejectVolunteer = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Invalid ids' });
   }
 
-  const event = await Event.findById(eventId).select('conductingOrgId collaboratingOrgId date time').lean();
+  const event = await Event.findById(eventId).select('conductingOrgId collaboratingOrgId date time name').lean();
   if (!event) return res.status(404).json({ message: 'Event not found' });
 
   const isOwner =
@@ -161,6 +219,24 @@ export const rejectVolunteer = asyncHandler(async (req, res) => {
     { new: true }
   );
   if (!v) return res.status(404).json({ message: 'Volunteer record not found' });
+
+  // 🔔 NOTIFICATION: notify user rejected
+  await notify({
+    recipient: userId,
+    recipientType: "User",
+
+    actorId: actor.id,
+    actorType: "Organization",
+
+    type: "VOLUNTEER_REJECTED",
+    title: "Volunteer request rejected",
+    body: `Your volunteer request for "${event.name}" was rejected.`,
+
+    entityType: "Event",
+    entityId: eventId,
+    data: { status: "rejected" }
+  });
+
   res.json({ ok: true, volunteer: v });
 });
 

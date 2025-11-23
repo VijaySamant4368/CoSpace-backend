@@ -3,6 +3,7 @@ import Follow from '../models/Follow.js';
 import Organization from '../models/Organization.js';
 import User from '../models/User.js';
 import { isValidObjectId } from '../utils/validate.js';
+import { notify } from '../utils/notify.js';
 
 export const listFollowers = asyncHandler(async (req, res) => {
   const { id } = req.params;  // org id
@@ -46,6 +47,23 @@ export const followOrg = asyncHandler(async (req, res) => {
 
   await Organization.updateOne({ _id: orgId }, { $inc: { followersCount: 1 } });
   await User.updateOne({ _id: user._id }, { $inc: { followingCount: 1 } });
+
+  await notify({
+    recipient: org._id,
+    recipientType: "Organization",
+
+    actorId: user._id,
+    actorType: "User",
+
+    type: "FOLLOW_ORG",
+    title: "New follower",
+    body: `${user.username} followed your organization.`,
+
+    entityType: "Organization",
+    entityId: org._id,
+
+    data: { followerId: user._id }
+  });
 
   res.status(201).json(edge);
 });

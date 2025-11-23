@@ -3,6 +3,8 @@ import Razorpay from "razorpay";
 import crypto from "crypto";
 import Donation from "../models/Donation.js";
 import Event from "../models/Event.js";
+import User from "../models/User.js";
+import { notify } from "../utils/notify.js";
 
 // Razorpay instance
 const razorpay = new Razorpay({
@@ -19,14 +21,16 @@ const razorpay = new Razorpay({
  * 3. Returns order info for frontend Razorpay Checkout
  */
 export const createPayment = async (req, res) => {
+  console.log(req.body)
   try {
-    const donorId = req.actor?.id;              // from protect middleware
+    const donorId = req.actor?.id;
     if (!donorId) return res.status(401).json({ error: "Unauthorized" });
 
-    const { amount, currency = "INR", eventId } = req.body || {};
+    const { amount, currency = "INR", eventId, orgId } = req.body || {};
 
-    if (!eventId) {
-      return res.status(400).json({ error: "eventId is required" });
+    // Must have either eventId or orgId
+    if (!eventId && !orgId) {
+      return res.status(400).json({ error: "eventId or orgId is required" });
     }
 
     const amt = Number(amount);
@@ -34,18 +38,29 @@ export const createPayment = async (req, res) => {
       return res.status(400).json({ error: "amount must be >= 0.01" });
     }
 
-    const ev = await Event.findById(eventId)
-      .select("_id conductingOrgId")
-      .lean();
-    if (!ev) return res.status(404).json({ error: "Event not found" });
+    let beneficiaryOrgId = null;
+    let event = null;
+
+    if (eventId) {
+      event = await Event.findById(eventId)
+        .select("_id conductingOrgId name")
+        .lean();
+      if (!event) return res.status(404).json({ error: "Event not found" });
+
+      beneficiaryOrgId = event.conductingOrgId || null;
+    } else {
+      // orgId flow (no event)
+      beneficiaryOrgId = orgId;
+    }
 
     const options = {
-      amount: amt,
+      amount: amt, // paise (don’t change)
       currency,
       payment_capture: 1,
       notes: {
         donorId: donorId || "",
         eventId: eventId || "",
+        orgId: beneficiaryOrgId || "",
       },
     };
 
@@ -54,24 +69,57 @@ export const createPayment = async (req, res) => {
     // Create Donation with status "pending"
     const donation = await Donation.create({
       donor: donorId,
-      event: eventId,
-      beneficiary: ev.conductingOrgId || null,
+      event: eventId || null,
+      beneficiary: beneficiaryOrgId || null,
       amount: amt,
-      transactionId: order.id,    // Razorpay order id
+      transactionId: order.id, // Razorpay order id
       status: "pending",
       timestamp: Date.now(),
     });
 
+    // SEND NOTIFICATION TO BENEFICIARY ORG ON SUCCESS
+    if (donation.beneficiary) {
+      const donor = await User.findById(donorId).select("username name").lean();
+
+      let eventName = "";
+      if (donation.event) {
+        const evDoc = await Event.findById(donation.event).select("name").lean();
+        eventName = evDoc?.name || "event";
+      }
+
+      await notify({
+        recipient: donation.beneficiary,
+        recipientType: "Organization",
+
+        actorId: donorId,
+        actorType: "User",
+
+        type: "DONATION_RECEIVED",
+        title: "New donation received",
+        body: `${donor?.username || "A user"} donated ₹${donation.amount / 100} to your ${eventName? `event ${eventName}` : `organization`}.`,
+
+        entityType: "Donation",
+        entityId: donation._id,
+
+        data: {
+          amount: donation.amount,
+          eventId: donation.event,
+          donorId,
+          orgId: donation.beneficiary,
+          paymentId: donation._id,
+        },
+      });
+    }
+
     return res.status(201).json({
       orderId: order.id,
-      amount: order.amount,       // paise
+      amount: order.amount, // paise
       currency: order.currency,
       donationId: donation._id,
       key: process.env.RAZORPAY_KEY_ID,
     });
   } catch (err) {
     console.error("Error creating Razorpay order:", err);
-    // handle duplicate transactionId
     if (err.code === 11000 && err.keyPattern?.transactionId) {
       return res.status(409).json({ error: "Duplicate transactionId" });
     }
@@ -91,10 +139,11 @@ export const createPayment = async (req, res) => {
  * 1. Verifies Razorpay signature
  * 2. Finds Donation by transactionId (== razorpay_order_id)
  * 3. Updates status -> completed / failed
+ * 4. ✅ Sends notification on completed
  */
 export const verifyPayment = async (req, res) => {
   try {
-    const donorId = req.user?.id;
+    const donorId = req.actor?.id || req.user?.id;
     if (!donorId) return res.status(401).json({ error: "Unauthorized" });
 
     const {

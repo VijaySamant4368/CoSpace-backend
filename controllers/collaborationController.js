@@ -4,6 +4,7 @@ import Collabration from '../models/Collaboration.js';
 import { isValidObjectId } from '../utils/validate.js';
 import mongoose from 'mongoose';
 import { isDateTimeInPast } from '../utils/time.js';
+import { notify } from '../utils/notify.js';
 
 // POST /api/events/:eventId/collab/requests
 // Body: { note?: string }
@@ -44,6 +45,24 @@ export const createCollabRequest = asyncHandler(async (req, res) => {
     note,
     status: 'pending',
   });
+
+  // NOTIFICATION: notify conducting org about new request
+  if (evt.conductingOrgId) {
+    await notify({
+      recipient: evt.conductingOrgId,
+      recipientType: "Organization",
+
+      actorId: actor.id,
+      actorType: "Organization",
+
+      type: "COLLAB_REQUEST",
+      title: "New collaboration request",
+      body: `${actor.username} requested collaboration for your event.`,
+      entityType: "Event",
+      entityId: eventId,
+      data: { requestId: doc._id }
+    });
+  }
 
   res.status(201).json({ message: 'Request created', request: doc });
 });
@@ -104,50 +123,77 @@ export const acceptRequest = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Invalid ids' });
 
   const session = await mongoose.startSession();
-  await session.withTransaction(async () => {
-    const evt = await Event.findOne({ _id: eventId }).session(session);
-    if (!evt) throw new Error('Event not found');
-    if (String(evt.conductingOrgId) !== actor.id) {
-      const err = new Error('Only conducting org can accept'); err.statusCode = 403; throw err;
-    }
-    // not in past
-    if (isDateTimeInPast(evt.date, evt.time)) {
-      const err = new Error('Cannot accept collaboration for a past event'); err.statusCode = 400; throw err;
-    }
-    if (evt.collaboratingOrgId) {
-      const err = new Error('Event already has a collaborator'); err.statusCode = 409; throw err;
-    }
 
-    const reqDoc = await Collabration.findOne({ _id: requestId, eventId, status: 'pending' }).session(session);
-    if (!reqDoc) {
-      const err = new Error('Request not found or not pending'); err.statusCode = 404; throw err;
+  let updatedEvt = null;
+  let reqDoc = null;
+
+  try {
+    await session.withTransaction(async () => {
+      const evt = await Event.findOne({ _id: eventId }).session(session);
+      if (!evt) throw new Error('Event not found');
+      if (String(evt.conductingOrgId) !== actor.id) {
+        const err = new Error('Only conducting org can accept'); err.statusCode = 403; throw err;
+      }
+      // not in past
+      if (isDateTimeInPast(evt.date, evt.time)) {
+        const err = new Error('Cannot accept collaboration for a past event'); err.statusCode = 400; throw err;
+      }
+      if (evt.collaboratingOrgId) {
+        const err = new Error('Event already has a collaborator'); err.statusCode = 409; throw err;
+      }
+
+      reqDoc = await Collabration.findOne({ _id: requestId, eventId, status: 'pending' }).session(session);
+      if (!reqDoc) {
+        const err = new Error('Request not found or not pending'); err.statusCode = 404; throw err;
+      }
+
+      // Atomically set collaborator (ensure still null)
+      updatedEvt = await Event.findOneAndUpdate(
+        { _id: eventId, collaboratingOrgId: null },
+        { $set: { collaboratingOrgId: reqDoc.requesterOrgId } },
+        { new: true, session }
+      );
+      if (!updatedEvt) {
+        const err = new Error('Another collaborator was set concurrently'); err.statusCode = 409; throw err;
+      }
+
+      // Mark this request accepted
+      await Collabration.updateOne({ _id: reqDoc._id }, { $set: { status: 'accepted' } }, { session });
+
+      // Auto-reject all other pending requests for this event
+      await Collabration.updateMany(
+        { eventId, status: 'pending', _id: { $ne: reqDoc._id } },
+        { $set: { status: 'rejected' } },
+        { session }
+      );
+    });
+
+    // ✅ NOTIFICATION: notify requester org that request was accepted
+    if (reqDoc?.requesterOrgId) {
+      await notify({
+        recipient: reqDoc.requesterOrgId,
+        recipientType: "Organization",
+
+        actorId: actor.id,
+        actorType: "Organization",
+
+        type: "COLLAB_ACCEPTED", // add in enum if you want distinct type
+        title: "Collaboration accepted",
+        body: `Your collaboration request was accepted.`,
+        entityType: "Event",
+        entityId: eventId,
+        data: { requestId }
+      });
     }
-
-    // Atomically set collaborator (ensure still null)
-    const updatedEvt = await Event.findOneAndUpdate(
-      { _id: eventId, collaboratingOrgId: null },
-      { $set: { collaboratingOrgId: reqDoc.requesterOrgId } },
-      { new: true, session }
-    );
-    if (!updatedEvt) {
-      const err = new Error('Another collaborator was set concurrently'); err.statusCode = 409; throw err;
-    }
-
-    // Mark this request accepted
-    await Collabration.updateOne({ _id: reqDoc._id }, { $set: { status: 'accepted' } }, { session });
-
-    // Auto-reject all other pending requests for this event
-    await Collabration.updateMany(
-      { eventId, status: 'pending', _id: { $ne: reqDoc._id } },
-      { $set: { status: 'rejected' } },
-      { session }
-    );
 
     res.json({ message: 'Accepted', event: updatedEvt, acceptedRequestId: String(reqDoc._id) });
-  }).catch(err => {
+
+  } catch (err) {
     const code = err.statusCode || 500;
     return res.status(code).json({ message: err.message || 'Accept failed' });
-  }).finally(() => session.endSession());
+  } finally {
+    session.endSession();
+  }
 });
 
 // POST /api/events/:eventId/collab/requests/:requestId/reject  (conducting org only)
@@ -172,6 +218,22 @@ export const rejectRequest = asyncHandler(async (req, res) => {
 
   if (!reqDoc) return res.status(404).json({ message: 'Request not found or not pending' });
 
+  // ✅ NOTIFICATION: notify requester org rejected
+  await notify({
+    recipient: reqDoc.requesterOrgId,
+    recipientType: "Organization",
+
+    actorId: actor.id,
+    actorType: "Organization",
+
+    type: "COLLAB_REJECTED", // add in enum if you want distinct type
+    title: "Collaboration rejected",
+    body: `Your collaboration request was rejected.`,
+    entityType: "Event",
+    entityId: eventId,
+    data: { requestId }
+  });
+
   res.json({ message: 'Rejected', request: reqDoc });
 });
 
@@ -191,6 +253,25 @@ export const cancelMyRequest = asyncHandler(async (req, res) => {
   ).lean();
 
   if (!reqDoc) return res.status(404).json({ message: 'No pending request found to cancel' });
+
+  // ✅ NOTIFICATION: notify conducting org cancelled
+  const evt = await Event.findById(eventId).select('conductingOrgId').lean();
+  if (evt?.conductingOrgId) {
+    await notify({
+      recipient: evt.conductingOrgId,
+      recipientType: "Organization",
+
+      actorId: actor.id,
+      actorType: "Organization",
+
+      type: "COLLAB_CANCELLED", // add in enum if you want distinct type
+      title: "Collaboration request cancelled",
+      body: `${actor.username} cancelled their collaboration request.`,
+      entityType: "Event",
+      entityId: eventId,
+      data: { requestId }
+    });
+  }
 
   res.json({ message: 'Cancelled', request: reqDoc });
 });

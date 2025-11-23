@@ -3,6 +3,8 @@ import crypto from 'crypto';
 import mongoose from 'mongoose';
 import Donation from '../models/Donation.js';
 import Event from '../models/Event.js';
+import { notify } from '../utils/notify.js';
+import User from "../models/User.js"
 
 const toId = (id) => {
   try { return new mongoose.Types.ObjectId(id); } catch { return id; }
@@ -10,7 +12,7 @@ const toId = (id) => {
 
 export const donate = async (req, res) => {
   try {
-    const donorId = req.user?.id;
+    const donorId = req.actor?.id
     if (!donorId) return res.status(401).json({ error: 'Unauthorized' });
 
     const {
@@ -21,14 +23,14 @@ export const donate = async (req, res) => {
       timestamp,
     } = req.body || {};
 
-    if (!eventId) return res.status(400).json({ error: 'eventId is required' });
+    // if (!eventId) return res.status(400).json({ error: 'eventId is required' }); Can donate without Id
 
     const amt = Number(amount);
     if (!amt || Number.isNaN(amt) || amt < 0.01) {
       return res.status(400).json({ error: 'amount must be >= 0.01' });
     }
 
-    const ev = await Event.findById(eventId).select('_id').lean();
+    const ev = await Event.findById(eventId).select('_id conductingOrgId name').lean();
     if (!ev) return res.status(404).json({ error: 'Event not found' });
 
     const txId = transactionId || `local_${crypto.randomUUID()}`;
@@ -43,6 +45,33 @@ export const donate = async (req, res) => {
       timestamp: timestamp ? new Date(timestamp) : Date.now(),
     });
 
+    console.log("out")
+    console.log(ev)
+    if (ev.conductingOrgId) {
+      const donor = await User.findById(donorId).select('username name').lean();
+
+      await notify({
+        recipient: ev.conductingOrgId,
+        recipientType: "Organization",
+
+        actorId: donorId,
+        actorType: "User",
+
+        type: "DONATION_RECEIVED",
+        title: "New donation received",
+        body: `${donor?.username || "A user"} donated ₹${amt/100} to your event "${ev.name}".`,
+
+        entityType: "Donation",
+        entityId: donation._id,
+
+        data: {
+          amount: amt,
+          eventId: eventId,
+          donorId: donorId,
+        }
+      });
+    }
+
     return res.status(201).json({ donation });
   } catch (err) {
     if (err.code === 11000 && err.keyPattern?.transactionId) {
@@ -51,6 +80,7 @@ export const donate = async (req, res) => {
     return res.status(500).json({ error: err.message || 'Failed to create donation' });
   }
 };
+
 
 /** GET /api/donations/user/:userId — all past donations by current user (ALL rows) */
 export const userPastDonation = async (req, res) => {
@@ -78,7 +108,7 @@ export const userPastDonation = async (req, res) => {
 export const eventPastDonation = async (req, res) => {
   try {
     const eventId = req.params.eventId;
-    if (!eventId) return res.status(400).json({ error: 'eventId is required' });
+    // if (!eventId) return res.status(400).json({ error: 'eventId is required' });
 
     const status = req.query.status || 'completed';
     const match = { event: toId(eventId), ...(status && { status }) };
