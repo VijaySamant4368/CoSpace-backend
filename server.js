@@ -1,22 +1,23 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-
 import connectDB from './config/db.js';
+
 import authRoutes from './routes/authRoute.js';
-import userRoutes from './routes/userRoute.js';
-import orgRoutes from './routes/orgRoute.js';
-import eventRoutes from './routes/eventRoute.js';
-import followRoutes from './routes/followRoute.js';
+import paymentRoutes from './routes/paymentRoute.js';
+import searchRoutes from './routes/searchRoute.js';
+
 import attendanceRoutes from './routes/attendanceRoute.js'
-import volunteerRoutes from './routes/volunteerRoute.js'
-import donationRoutes from './routes/donationRoute.js'
 import chatRoutes from './routes/chatRoute.js'
 import collaborationRoutes from './routes/collaborationRoute.js'
-import searchRoutes from './routes/searchRoute.js';
-import reviewRoutes from './routes/reviewRoute.js';
-import paymentRoutes from './routes/paymentRoute.js';
+import donationRoutes from './routes/DonationRoute.js'
+import eventRoutes from './routes/eventRoute.js';
+import followRoutes from './routes/followRoute.js';
 import notificationRoutes from './routes/notificationRoute.js';
+import orgRoutes from './routes/orgRoute.js';
+import reviewRoutes from './routes/reviewRoute.js';
+import userRoutes from './routes/userRoute.js';
+import volunteerRoutes from './routes/volunteerRoute.js'
 
 dotenv.config();
 
