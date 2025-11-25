@@ -32,3 +32,17 @@ export const verifyOrganization = asyncHandler(async (req, res) => {
 
   res.json({ message: "Organization verified", org });
 });
+
+export const getOrgVerificationStats = asyncHandler(async (req, res) => {
+  const [total, verifiedCount, pendingCount] = await Promise.all([
+    Organization.countDocuments({}),
+    Organization.countDocuments({ verified: true }),
+    Organization.countDocuments({ verified: false }),
+  ]);
+
+  res.json({
+    totalOrganizations: total,
+    approvedOrganizations: verifiedCount,
+    pendingVerifications: pendingCount,
+  });
+});

@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import Organization from '../models/Organization.js';
+import Admin from '../models/Admin.js';
 
 export async function protect(req, res, next) {
   const auth = req.headers.authorization || '';
@@ -16,18 +17,28 @@ export async function protect(req, res, next) {
       actor = await User.findById(id).select('-passwordHash').lean();
     } else if (type === 'org') {
       actor = await Organization.findById(id).select('-passwordHash').lean();
+    } else if (type === 'admin') {
+      actor = await Admin.findById(id).select('-passwordHash').lean();
     }
 
     if (!actor) {
       return res.status(401).json({ message: 'Account deleted or invalid' });
     }
 
-    req.actor = { id, email: actor.email, type, username: actor.username };
+    req.actor = {
+      id,
+      email: actor.email,
+      type,
+      username: actor.username,
+      name: actor.name,
+    };
+
     next();
   } catch (err) {
     res.status(401).json({ message: 'Invalid or expired token' });
   }
 }
+
 
 export function issueToken(actor) {
   const _id = actor._id || actor.id; // <-- accept both

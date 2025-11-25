@@ -6,7 +6,7 @@ const adminSchema = new mongoose.Schema(
     email:    { type: String, required: true, unique: true, index: true },
     passwordHash: { type: String, required: true },
     name:     { type: String, trim: true, default: 'Admin' },
-    role:     { type: String, default: 'superadmin' }, // optional
+    role:     { type: String, default: 'superadmin' },
     type:     { type: String, default: 'admin', immutable: true }
   },
   { timestamps: true }

@@ -333,15 +333,21 @@ export const deleteAccount = asyncHandler(async (req, res) => {
   }
 });
 
-
-
-//To know if the actor is user or org
 export const verify = asyncHandler(async (req, res) => {
-  //`protect()` already validated
   const { actor } = req;
+  console.log(actor)
+
   if (!actor) return res.json({ user: null });
-  if (actor.type == 'user') {
-    res.json({ user: actor })
+
+  if (actor.type === 'user') {
+    return res.json({ user: actor });
   }
-  if (actor.type == 'org') res.json({ org: actor });
+  if (actor.type === 'org') {
+    return res.json({ org: actor });
+  }
+  if (actor.type === 'admin') {
+    return res.json({ admin: actor });
+  }
+
+  res.json({ user: null });
 });

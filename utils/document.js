@@ -20,13 +20,11 @@ export async function uploadDocument(file) {
   try {
     const result = await cloudinary.uploader.upload(file.path, {
       folder: "org-docs",
-      resource_type: "raw",      // <--- IMPORTANT for PDFs
-      format: "pdf" || undefined // Cloudinary auto-detects anyway
+      resource_type: "auto",
     });
 
     await fs.unlink(file.path);
     return result.secure_url;
-
   } catch (err) {
     console.error("Cloudinary document upload error:", err);
     await fs.unlink(file.path).catch(() => {});
