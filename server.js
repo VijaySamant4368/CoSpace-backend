@@ -18,6 +18,8 @@ import orgRoutes from './routes/orgRoute.js';
 import reviewRoutes from './routes/reviewRoute.js';
 import userRoutes from './routes/userRoute.js';
 import volunteerRoutes from './routes/volunteerRoute.js'
+import adminRoutes from './routes/adminRoute.js'
+import orgDocsRoutes from './routes/orgDocsRoute.js'
 
 dotenv.config();
 
@@ -57,3 +59,6 @@ app.use('/api/reviews', reviewRoutes);
 
 app.use("/api/payment", paymentRoutes);
 app.use("/api/notifications", notificationRoutes);
+
+app.use('/api/admin', adminRoutes);
+app.use('/api/org-docs', orgDocsRoutes);

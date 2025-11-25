@@ -4,6 +4,7 @@ import Organization from '../models/Organization.js';
 import bcrypt from 'bcrypt';
 import { issueToken } from '../middleware/auth.js';
 import { uploadImage } from '../utils/image.js';
+import Admin from '../models/Admin.js';
 
 // number of salt rounds (10–12 is a good default)
 const SALT_ROUNDS = 10;
@@ -24,17 +25,33 @@ export const login = asyncHandler(async (req, res) => {
 
   email = String(email).toLowerCase();
 
-  // Try User, then Org
   const user = await User.findOne({ email }).lean();
   const org  = user ? null : await Organization.findOne({ email }).lean();
-  const actor = user ? { ...user, type: 'user' } : org ? { ...org, type: 'org' } : null;
+  const admin = (user || org) ? null : await Admin.findOne({ email }).lean();
+
+  const actor =
+    user  ? { ...user, type: 'user' } :
+    org   ? { ...org, type: 'org' }  :
+    admin ? { ...admin, type: 'admin' } :
+    null;
+
   if (!actor?.passwordHash) return res.status(404).json({ message: 'Account not found' });
 
   const ok = await verifyPassword(password, actor.passwordHash);
   if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
 
   const token = issueToken(actor);
-  res.json({ token, user: { name: actor.name, email: actor.email, type: actor.type, username: actor.username } });
+
+  res.json({
+    token,
+    user: {
+      name: actor.name,
+      email: actor.email,
+      type: actor.type,
+      username: actor.username,
+      ...(actor.type === 'org' ? { verified: actor.verified } : {})
+    }
+  });
 });
 
 const USERNAME_RE = /^[a-z0-9._-]{3,32}$/;
