@@ -1,18 +1,7 @@
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = 'uploads/org-docs';
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${Date.now()}-${Math.random().toString(16).slice(2)}${ext}`);
-  }
-});
+// Use memoryStorage to keep file in memory instead of disk
+const storage = multer.memoryStorage();
 
 const allowed = new Set([
   'application/pdf',
@@ -32,5 +21,5 @@ function fileFilter(req, file, cb) {
 export const uploadDocs = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB each
+  limits: { fileSize: 10 * 1024 * 1024 }
 });

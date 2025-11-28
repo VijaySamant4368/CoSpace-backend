@@ -1,6 +1,5 @@
-import { v2 as cloudinary } from "cloudinary";
-import fs from "fs/promises";
-import dotenv from "dotenv";
+import { v2 as cloudinary } from 'cloudinary';
+import dotenv from 'dotenv';
 
 dotenv.config();
 
@@ -10,24 +9,34 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-/**
- * Uploads PDF or image to Cloudinary inside folder: org-docs
- * Returns secure_url
- */
 export async function uploadDocument(file) {
-  if (!file?.path) return null;
+  if (!file?.buffer) {
+    console.error("No file buffer available");
+    return null;
+  }
 
   try {
-    const result = await cloudinary.uploader.upload(file.path, {
-      folder: "org-docs",
-      resource_type: "auto",
+    // Directly pass the buffer to Cloudinary's upload_stream method
+    const result = await new Promise((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        {
+          folder: 'org-docs',
+          resource_type: 'auto',  // Automatically detects file type (image, pdf, etc.)
+        },
+        (error, uploadResult) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(uploadResult);
+          }
+        }
+      ).end(file.buffer);  // End the stream with the buffer directly
     });
 
-    await fs.unlink(file.path);
+    console.log("Cloudinary upload result:", result);  // Log the result from Cloudinary
     return result.secure_url;
   } catch (err) {
     console.error("Cloudinary document upload error:", err);
-    await fs.unlink(file.path).catch(() => {});
     throw new Error("Document upload failed");
   }
 }

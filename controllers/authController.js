@@ -335,7 +335,6 @@ export const deleteAccount = asyncHandler(async (req, res) => {
 
 export const verify = asyncHandler(async (req, res) => {
   const { actor } = req;
-  console.log(actor)
 
   if (!actor) return res.json({ user: null });
 

@@ -1,6 +1,7 @@
+import { v2 as cloudinary } from "cloudinary";
+import { uploadDocument } from "../utils/document.js"; // Same as your existing uploadDocument utility
 import asyncHandler from "../middleware/asyncHandler.js";
 import Organization from "../models/Organization.js";
-import { uploadDocument } from "../utils/document.js";
 
 export const submitOrgDocs = asyncHandler(async (req, res) => {
   const { actor } = req;
@@ -18,7 +19,7 @@ export const submitOrgDocs = asyncHandler(async (req, res) => {
     const f = files[fieldName]?.[0];
     if (!f) return null;
 
-    const url = await uploadDocument(f);
+    const url = await uploadDocument(f);  // This function should now handle in-memory uploads
     return url;
   }
 
